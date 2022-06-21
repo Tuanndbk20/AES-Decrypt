@@ -8,6 +8,7 @@ import java.io.OutputStream;
 import java.math.BigInteger;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
+import java.util.Base64;
 
 import org.json.simple.JSONObject;
 import org.json.simple.JSONValue;
@@ -16,12 +17,13 @@ import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
 import com.sun.net.httpserver.HttpServer;
 
-public class mainDecrypt {
+public class main_DecryptAES_Text {
 
 	public final static int port = 9999;
 	public final static String localhost = "127.0.0.1";
 	public static byte[] text;
 	public static FileWriter myWriter;
+	public static String selectedFile = "D:\\imageAES\\newgirl.png";
 
 	/* Transform a byte array in an hexadecimal string */
 	private static String toHex(byte[] data) {
@@ -94,75 +96,15 @@ public class mainDecrypt {
 	}
 
 	public static String DecryptResource(byte[] ciphertext) {
-		byte[] plaintext = new byte[ciphertext.length];
 		String kzz = "0f1571c947d9e8590cb7add6af7f6798";
 		byte[] kz = hexStringToByteArray(kzz);
-
-		AESEngine newAES = new AESEngine(kz);
-		newAES.Decrypt(ciphertext, plaintext);
-		return toHex(plaintext);
+		AESEngineCTRmode newAES = new AESEngineCTRmode(kz);
+		return toHex(newAES.Decrypt(ciphertext));
 	}
 
 	/**************************
 	 * decrypt with plaintext
 	 *******************************/
-//	public static void main(String[] args) throws IOException {
-//		HttpServer server = HttpServer.create(new InetSocketAddress(port), 0);
-//		System.out.println("httpServer start at port: " + port);
-//		server.createContext("/DecryptAES", new MyHandler());
-//		server.setExecutor(null); // creates a default executor
-//		server.start();
-//	}
-//
-//
-//	static class MyHandler implements HttpHandler {
-//		public void handle(HttpExchange httpExchange) throws IOException {
-//			System.out.println("Method: " + httpExchange.getRequestMethod());
-//
-//			if ("GET".equals(httpExchange.getRequestMethod())) {
-//
-//				// requestParamValue = handleGetRequest(httpExchange);
-//
-//			} else if ("POST".equals(httpExchange.getRequestMethod())) {
-//				handlePostRequest(httpExchange);
-//			}
-//			// handleResponse(httpExchange, requestParamValue);
-//		}
-
-//		private void handlePostRequest(HttpExchange httpExchange) throws IOException {
-//			// TODO Auto-generated method stub
-//			System.out.println("Running in handle Post ");
-//			// String address = httpExchange.getRemoteAddress().toString();
-//
-//			StringBuilder sb = new StringBuilder();
-//			InputStream ios = httpExchange.getRequestBody();
-//			int i;
-//			while ((i = ios.read()) != -1) {
-//				sb.append((char) i);
-//			}
-//			String jsonStr = sb.toString();
-//
-//			Object obj = JSONValue.parse(jsonStr);
-//			JSONObject jsonObject = (JSONObject) obj;
-//			String Ciphertext = (String) jsonObject.get("ciphertext");
-//			System.out.println("ciphertext: "+Ciphertext);
-//			byte[] ciphertext = hexStringToByteArray(Ciphertext);
-//			
-//			System.out.println("\nplaintext: "+DecryptResource(ciphertext));
-//			
-//			String htmlResponse = "OK";
-//			httpExchange.sendResponseHeaders(200, htmlResponse.length());
-//			OutputStream os = httpExchange.getResponseBody();
-//			os.write(htmlResponse.getBytes());
-//			os.close();
-//		}
-//	}
-	
-	
-	
-	
-
-	/**************** transfer frame image with number then encrypt **************/
 	public static void main(String[] args) throws IOException {
 		HttpServer server = HttpServer.create(new InetSocketAddress(port), 0);
 		System.out.println("httpServer start at port: " + port);
@@ -170,6 +112,7 @@ public class mainDecrypt {
 		server.setExecutor(null); // creates a default executor
 		server.start();
 	}
+
 
 	static class MyHandler implements HttpHandler {
 		public void handle(HttpExchange httpExchange) throws IOException {
@@ -200,49 +143,118 @@ public class mainDecrypt {
 
 			Object obj = JSONValue.parse(jsonStr);
 			JSONObject jsonObject = (JSONObject) obj;
-			String end = (String) jsonObject.get("end");
 			String Ciphertext = (String) jsonObject.get("ciphertext");
-			System.out.println("ciphertext: " + Ciphertext);
-			byte[] cipher = hexStringToByteArray(Ciphertext);
-
-			byte[] ciphert = new byte[cipher.length - 1];
-			System.arraycopy(cipher, 0, ciphert, 0, cipher.length - 1);
-
-			if (cipher[cipher.length - 1] == (byte) 0) {
-				text = ciphert;
-			} else {
-				text = concatByteArrays(text, ciphert);
+			
+			byte[] ciphertext = hexStringToByteArray(Ciphertext);
+			
+//			// write file to D:...
+			try {
+				FileWriter myWriter = new FileWriter("D:\\eclipse project\\AES\\consoleView\\check.txt");
+				myWriter.write(DecryptResource(ciphertext));
+				myWriter.close();
+			} catch (IOException e) {
+				System.out.println("An error occurred.");
+				e.printStackTrace();
 			}
-
-			System.out.println(toHex(text));
-			if (end.equals("endPlaintext")) {
-				System.out.println("----------");
-				System.out.println(toHex(text));
-
-				// write file to D:...
-				try {
-					FileWriter myWriter = new FileWriter("D:\\eclipse project\\AES\\consoleView\\console.txt");
-					myWriter.write(DecryptResource(text));
-					myWriter.close();
-				} catch (IOException e) {
-					System.out.println("An error occurred.");
-					e.printStackTrace();
-				}
-				String htmlResponse = toHex(cipher[cipher.length - 1]);
-				httpExchange.sendResponseHeaders(200, htmlResponse.length());
-				System.out.println("htmlResponse: " + htmlResponse);
-				OutputStream os = httpExchange.getResponseBody();
-				os.write(htmlResponse.getBytes());
-				os.close();
-			}
-			String htmlResponse = toHex(cipher[cipher.length - 1]);
+			
+			byte[] encode = Base64.getEncoder().encode(hexStringToByteArray(DecryptResource(ciphertext)));
+			String ClearText = new String(encode);
+			ImageToBase64 image = new ImageToBase64();
+			image.decoder(ClearText, selectedFile);
+			
+			String htmlResponse = "OK";
 			httpExchange.sendResponseHeaders(200, htmlResponse.length());
-			System.out.println("htmlResponse: " + htmlResponse);
 			OutputStream os = httpExchange.getResponseBody();
 			os.write(htmlResponse.getBytes());
-			
-
+			os.close();
 		}
 	}
+	
+	
+	
+	
+
+	/**************** transfer frame image with number then encrypt **************/
+//	public static void main(String[] args) throws IOException {
+//		HttpServer server = HttpServer.create(new InetSocketAddress(port), 0);
+//		System.out.println("httpServer start at port: " + port);
+//		server.createContext("/DecryptAES", new MyHandler());
+//		server.setExecutor(null); // creates a default executor
+//		server.start();
+//	}
+//
+//	static class MyHandler implements HttpHandler {
+//		public void handle(HttpExchange httpExchange) throws IOException {
+//			System.out.println("Method: " + httpExchange.getRequestMethod());
+//
+//			if ("GET".equals(httpExchange.getRequestMethod())) {
+//
+//				// requestParamValue = handleGetRequest(httpExchange);
+//
+//			} else if ("POST".equals(httpExchange.getRequestMethod())) {
+//				handlePostRequest(httpExchange);
+//			}
+//			// handleResponse(httpExchange, requestParamValue);
+//		}
+//
+//		private void handlePostRequest(HttpExchange httpExchange) throws IOException {
+//			// TODO Auto-generated method stub
+//			System.out.println("Running in handle Post ");
+//			// String address = httpExchange.getRemoteAddress().toString();
+//
+//			StringBuilder sb = new StringBuilder();
+//			InputStream ios = httpExchange.getRequestBody();
+//			int i;
+//			while ((i = ios.read()) != -1) {
+//				sb.append((char) i);
+//			}
+//			String jsonStr = sb.toString();
+//
+//			Object obj = JSONValue.parse(jsonStr);
+//			JSONObject jsonObject = (JSONObject) obj;
+//			String end = (String) jsonObject.get("end");
+//			String Ciphertext = (String) jsonObject.get("ciphertext");
+//			System.out.println("ciphertext: " + Ciphertext);
+//			byte[] cipher = hexStringToByteArray(Ciphertext);
+//
+//			byte[] ciphert = new byte[cipher.length - 1];
+//			System.arraycopy(cipher, 0, ciphert, 0, cipher.length - 1);
+//
+//			if (cipher[cipher.length - 1] == (byte) 0) {
+//				text = ciphert;
+//			} else {
+//				text = concatByteArrays(text, ciphert);
+//			}
+//
+//			System.out.println(toHex(text));
+//			if (end.equals("endPlaintext")) {
+//				System.out.println("----------");
+//				System.out.println(toHex(text));
+//
+//				// write file to D:...
+//				try {
+//					FileWriter myWriter = new FileWriter("D:\\eclipse project\\AES\\consoleView\\console.txt");
+//					myWriter.write(DecryptResource(text));
+//					myWriter.close();
+//				} catch (IOException e) {
+//					System.out.println("An error occurred.");
+//					e.printStackTrace();
+//				}
+//				String htmlResponse = toHex(cipher[cipher.length - 1]);
+//				httpExchange.sendResponseHeaders(200, htmlResponse.length());
+//				System.out.println("htmlResponse: " + htmlResponse);
+//				OutputStream os = httpExchange.getResponseBody();
+//				os.write(htmlResponse.getBytes());
+//				os.close();
+//			}
+//			String htmlResponse = toHex(cipher[cipher.length - 1]);
+//			httpExchange.sendResponseHeaders(200, htmlResponse.length());
+//			System.out.println("htmlResponse: " + htmlResponse);
+//			OutputStream os = httpExchange.getResponseBody();
+//			os.write(htmlResponse.getBytes());
+//			
+//
+//		}
+//	}
 
 }
